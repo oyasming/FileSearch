@@ -2,7 +2,6 @@ package application;
 
 import java.io.IOException;
 
-import application.model.FileInfo;
 import application.model.FileList;
 import application.view.RootLayoutController;
 import javafx.application.Application;
@@ -56,50 +55,11 @@ public class MainApp extends Application {
     }
 
     /**
-     * 상위 레이아웃 안에 연락처 요약(person overview)을 보여준다.
-     */
-    /*
-    public void showListOverview() {
-        try {
-            // 연락처 요약을 가져온다.
-            FXMLLoader loader = new FXMLLoader();
-            loader.setLocation(MainApp.class.getResource("view/FileListLayout.fxml"));
-            AnchorPane listOverview = (AnchorPane) loader.load();
-
-            // 연락처 요약을 상위 레이아웃 가운데로 설정한다.
-            rootLayout.setBottom(listOverview);
-
-            // 메인 애플리케이션이 컨트롤러를 이용할 수 있게 한다.
-            FileListController controller = loader.getController();
-            controller.setMainApp(this);
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }*/
-    /**
      * 생성자
      */
     public MainApp() {
         // 샘플 데이터를 추가한다
     }
-    /**
-     * 상위 레이아웃 안에 연락처 요약(person overview)을 보여준다.
-     */
-    /*
-    public void showPersonOverview() {
-        try {
-            // 연락처 요약을 가져온다.
-            FXMLLoader loader = new FXMLLoader();
-            loader.setLocation(MainApp.class.getResource("view/ViewPannel.fxml"));
-            AnchorPane personOverview = (AnchorPane) loader.load();
-
-            // 연락처 요약을 상위 레이아웃 가운데로 설정한다.
-            rootLayout.setCenter(personOverview);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }*/
 
     /**
      * 메인 스테이지를 반환한다.

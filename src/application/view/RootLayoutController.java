@@ -14,6 +14,7 @@ import application.model.FileInfo;
 import application.model.FileList;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.event.Event;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
@@ -52,6 +53,9 @@ public class RootLayoutController {
 	// 메인 애플리케이션 참조
 	private MainApp mainApp;
 
+	// 파일 중 txt 아닌 파일을 거르기 위한 필터 패턴. (exe, class 등 바이너리 파일을 거르기 위해 사용. WhiteList)
+	private final static String TEXT_FILE_FILTER_PATTERN = "(?i).+\\.(txt|jsp|asp|js|ini|properties|java|xml)$";
+
 	/**
 	 * 생성자. initialize() 메서드 이전에 호출된다.
 	 */
@@ -86,6 +90,7 @@ public class RootLayoutController {
 		String fileText = this.findFile.getText();
 		String[] fileNamePatterns = fileText.split(",");
 		String contentText = this.findContent.getText();
+		contentText = "*".equals(contentText) ? "" : contentText; 
 		String[] contents = contentText.split(",");
 
 		folder = "".equals(folder) ? "*" : folder.replace("\\\\", "\\");
@@ -108,20 +113,20 @@ public class RootLayoutController {
 
 		for (File tempFile : subFiles) {
 			if (tempFile.isFile()) {
-				String tempPath = tempFile.getParent();
 				String tempFileName = tempFile.getName();
 				// System.out.println("Path=" + tempFile.getAbsolutePath());
 				// System.out.println("Path=" + tempPath);
 				// System.out.println("FileName=" + tempFileName);
 				// System.out.println("FullFileName=" + tempPath + "\\" + tempFileName);
 
-				// TODO 파일명은 \* 미처리
-				Pattern txtFilePattern = Pattern.compile("(?i).+\\.(txt|jsp|asp|js|ini|properties|java|xml)$");
-				Matcher txtFiles = txtFilePattern.matcher(tempFileName);
+				// 파일명은 \* 미처리
+				Pattern txtFilePattern = Pattern.compile(TEXT_FILE_FILTER_PATTERN);
+				Matcher txtFileFilter = txtFilePattern.matcher(tempFileName);
 
 				int lineNumber = 1; // 행 번호
 				boolean isFind = false;
 
+				if (txtFileFilter.find())
 				try {
 					////////////////////////////////////////////////////////////////
 					BufferedReader in = new BufferedReader(new FileReader(tempFile));
@@ -129,18 +134,21 @@ public class RootLayoutController {
 					FileList tempFileList = new FileList();
 				    ObservableList<FileInfo> list = FXCollections.observableArrayList();
 
-					while ((s = in.readLine()) != null && txtFiles.find()) {
+					while ((s = in.readLine()) != null) {
 						for (String content : contents) {
 							if("".equals(content)) {
 								isFind = true;
 								break;
 							}
+							content = content.trim();
+							content = content.replace("*", ".*");
 							String findStr = "(?i).*" + content.trim() + ".*";
 							System.out.println(findStr);
-							if (s.matches(findStr)) {
+							if ("*".equals(content.trim()) || s.matches(findStr)) {
 								System.out.format("%3d: %s%n", lineNumber, s);
 								isFind = true;
-								list.add(new FileInfo(lineNumber + "", s, content));
+								content = content.replace(".*", "*");
+								list.add(new FileInfo(lineNumber + "", content, s));
 							}
 						}
 
@@ -154,20 +162,21 @@ public class RootLayoutController {
 					in.close();
 					////////////////////////////////////////////////////////////////
 				} catch (IOException e) {
-					System.err.println(e); // 에러가 있다면 메시지 출력
+					System.out.println("Error File : " + tempFile.getAbsolutePath());
 					e.printStackTrace();
-					System.exit(1);
+					alertMessage("알림", "파일 입출력 중 에러가 발생하였습니다.", "");
+					break;
+					//System.exit(1);
 				} catch (PatternSyntaxException e) { // 정규식에 에러가 있다면
-					System.err.println(e);
-					System.exit(1);
+					System.out.println("Error File : " + tempFile.getAbsolutePath());
+					System.out.println("Error contents : " + contents.toString());
+					e.printStackTrace();
+					alertMessage("알림", "정규식 비교 중 에러가 발생하였습니다.", "");
+					break;
+					//System.exit(1);
 				}
 			}
-			/*** Do something withd tempPath and temp FileName ^^; ***/
 		}
-
-		//System.out.println(fileListArrays.toString());
-
-		// 1.
 
 		if (fileListArrays.size() > 0) {
 			listView.setItems(fileListArrays);
@@ -179,6 +188,9 @@ public class RootLayoutController {
 		tableView.setItems(fileListArrays.size() > 0 ? (ObservableList<FileInfo>) mainApp.getFileListData().get(0).getFileInfoData() : null);
 	}
 
+	/**
+	 * 하단 우측 테이블 뷰에서 각 컬럼 선택 시 실행하는 이벤트
+	 */
 	@FXML
 	public void setLabels() {
 		tableView.setItems((ObservableList<FileInfo>) mainApp.getFileListData().get(listView.getSelectionModel().selectedIndexProperty().getValue()).getFileInfoData());
@@ -212,14 +224,17 @@ public class RootLayoutController {
 			if (!parentFile.getName().equals("System Volume Information")) {
 				boolean isFind = false;
 				for (String patternString : fileNamePatterns) {
-					if (patternString.equals("*")) {
+					if(!patternString.equals("*")) {
+						Pattern p = Pattern.compile("(?i)" + patternString.replace(".", "\\.").replace("*", ".*"));
+						Matcher m = p.matcher(parentFile.getName());
+						if(patternString.equals("*") || (!isFind && m.find())) {
+							isFind = true;
+							break;
+						}
+					} else {
 						isFind = true;
 						break;
 					}
-
-					Pattern p = Pattern.compile(patternString);
-					Matcher m = p.matcher(parentFile.getName());
-					if(!isFind && m.find()) isFind = true;
 				}
 				if (parentFile.isFile() && isFind) {
 					subFiles.add(parentFile);
@@ -232,8 +247,8 @@ public class RootLayoutController {
 				}
 			}
 		} catch (Exception e) {
+			System.out.println("---------- findSubFiles Error --------");
 			System.out.println("Error File : " + parentFile);
-			System.out.println("Error fileNamePatterns : " + fileNamePatterns.toString());
 			e.printStackTrace();
 			//System.exit(-1);
 		}
