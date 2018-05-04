@@ -54,7 +54,7 @@ public class RootLayoutController {
 	private MainApp mainApp;
 
 	// 파일 중 txt 아닌 파일을 거르기 위한 필터 패턴. (exe, class 등 바이너리 파일을 거르기 위해 사용. WhiteList)
-	private final static String TEXT_FILE_FILTER_PATTERN = "(?i).+\\.(txt|jsp|asp|js|ini|properties|java|xml)$";
+	private final static String TEXT_FILE_FILTER_PATTERN = "(?i).*\\.(txt|jsp|asp|php|js|html|ini|properties|c|py|scala|java|xml|css)$";
 
 	/**
 	 * 생성자. initialize() 메서드 이전에 호출된다.
@@ -78,7 +78,21 @@ public class RootLayoutController {
 	}
 
 	/**
-	 * TODO 검색 실행 예정
+	 * 초기화 기능.
+	 * RootLayout.fxml
+	 * 버튼 [초기화] ON MOUSE CLICKED => initText()
+	 */
+	@FXML
+	private void initText() {
+		this.findFolder.setText("c:\\");
+		this.findFile.setText("*");
+		this.findContent.setText("");
+	}
+
+	/**
+	 * 검색 기능.
+	 * RootLayout.fxml
+	 * 버튼 [검색] ON MOUSE CLICKED => search()
 	 */
 	@FXML
 	private void search() {
@@ -126,40 +140,44 @@ public class RootLayoutController {
 				int lineNumber = 1; // 행 번호
 				boolean isFind = false;
 
-				if (txtFileFilter.find())
 				try {
 					////////////////////////////////////////////////////////////////
-					BufferedReader in = new BufferedReader(new FileReader(tempFile));
-					String s;
 					FileList tempFileList = new FileList();
-				    ObservableList<FileInfo> list = FXCollections.observableArrayList();
-
-					while ((s = in.readLine()) != null) {
-						for (String content : contents) {
-							if("".equals(content)) {
-								isFind = true;
-								break;
+					ObservableList<FileInfo> list = FXCollections.observableArrayList();
+					if (txtFileFilter.find()) {
+						BufferedReader in = new BufferedReader(new FileReader(tempFile));
+						String s;
+	
+						while ((s = in.readLine()) != null) {
+							for (String content : contents) {
+								if("".equals(content)) {
+									isFind = true;
+									break;
+								}
+								content = content.trim();
+								content = content.replace("*", ".*");
+								String findStr = "(?i).*" + content.trim() + ".*";
+								// System.out.println(findStr);
+								if ("*".equals(content.trim()) || s.matches(findStr)) {
+									// System.out.format("%3d: %s%n", lineNumber, s);
+									isFind = true;
+									content = content.replace(".*", "*");
+									list.add(new FileInfo(lineNumber + "", content, s));
+								}
 							}
-							content = content.trim();
-							content = content.replace("*", ".*");
-							String findStr = "(?i).*" + content.trim() + ".*";
-							System.out.println(findStr);
-							if ("*".equals(content.trim()) || s.matches(findStr)) {
-								System.out.format("%3d: %s%n", lineNumber, s);
-								isFind = true;
-								content = content.replace(".*", "*");
-								list.add(new FileInfo(lineNumber + "", content, s));
-							}
+							lineNumber++; // 행 번호 증가
 						}
-
-						lineNumber++; // 행 번호 증가
-					}
-					if (isFind) {
+						if (isFind) {
+							tempFileList.setFileName(tempFile.getAbsolutePath());
+							tempFileList.setFileInfoData(list);
+							fileListArrays.add(tempFileList);
+						}
+						in.close();
+					} else {
 						tempFileList.setFileName(tempFile.getAbsolutePath());
 						tempFileList.setFileInfoData(list);
 						fileListArrays.add(tempFileList);
 					}
-					in.close();
 					////////////////////////////////////////////////////////////////
 				} catch (IOException e) {
 					System.out.println("Error File : " + tempFile.getAbsolutePath());
@@ -193,7 +211,8 @@ public class RootLayoutController {
 	 */
 	@FXML
 	public void setLabels() {
-		tableView.setItems((ObservableList<FileInfo>) mainApp.getFileListData().get(listView.getSelectionModel().selectedIndexProperty().getValue()).getFileInfoData());
+		if (listView.getSelectionModel().selectedIndexProperty().getValue() >= 0)
+			tableView.setItems((ObservableList<FileInfo>) mainApp.getFileListData().get(listView.getSelectionModel().selectedIndexProperty().getValue()).getFileInfoData());
 	}
 
 	/**
@@ -209,7 +228,7 @@ public class RootLayoutController {
 		alert.setTitle(title);
 		alert.setHeaderText(header);
 		alert.setContentText(content);
-		
+
 		alert.showAndWait();
 	}
 
@@ -225,9 +244,10 @@ public class RootLayoutController {
 				boolean isFind = false;
 				for (String patternString : fileNamePatterns) {
 					if(!patternString.equals("*")) {
-						Pattern p = Pattern.compile("(?i)" + patternString.replace(".", "\\.").replace("*", ".*"));
+						Pattern p = Pattern.compile("(?i)" + patternString.replace(".", "\\.").replace("*", ".*") + "$");
 						Matcher m = p.matcher(parentFile.getName());
 						if(patternString.equals("*") || (!isFind && m.find())) {
+							//System.out.println("FileName : " + parentFile.getName() + ", pattern : (?i)" + patternString.replace(".", "\\.").replace("*", ".*") + "$");
 							isFind = true;
 							break;
 						}
@@ -239,7 +259,7 @@ public class RootLayoutController {
 				if (parentFile.isFile() && isFind) {
 					subFiles.add(parentFile);
 				} else if (parentFile.isDirectory()) {
-					subFiles.add(parentFile);
+					//subFiles.add(parentFile);
 					File[] childFiles = parentFile.listFiles();
 					for (File childFile : childFiles) {
 						findSubFiles(childFile, subFiles, fileNamePatterns);
@@ -261,6 +281,14 @@ public class RootLayoutController {
 	 */
 	public void setMainApp(MainApp mainApp) {
 		this.mainApp = mainApp;
-
 	}
+/*
+	public static void main(String[] args) {
+
+		Pattern p = Pattern.compile("(?i).*\\.dll");
+		Matcher m = p.matcher("install.res.1040.dll");
+		
+		System.out.println(m.find());
+	}
+*/
 }
