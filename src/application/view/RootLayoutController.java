@@ -14,7 +14,6 @@ import application.model.FileInfo;
 import application.model.FileList;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.event.Event;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
@@ -22,6 +21,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.scene.input.KeyEvent;
 
 public class RootLayoutController {
 	// 상단 검색 패널
@@ -96,42 +96,45 @@ public class RootLayoutController {
 	 */
 	@FXML
 	private void search() {
-		System.out.println("findFolder Text : "  + this.findFolder.getText());
-		System.out.println("findFile Text : "    + this.findFile.getText());
-		System.out.println("findContent Text : " + this.findContent.getText());
+		System.out.println("findFolder Text :  [" + this.findFolder.getText()  + "]");
+		System.out.println("findFile Text :    [" + this.findFile.getText()    + "]");
+		System.out.println("findContent Text : [" + this.findContent.getText() + "]");
 
-		String folder = this.findFolder.getText();
+		String path = this.findFolder.getText();
 		String fileText = this.findFile.getText();
 		String[] fileNamePatterns = fileText.split(",");
 		String contentText = this.findContent.getText();
 		contentText = "*".equals(contentText) ? "" : contentText; 
 		String[] contents = contentText.split(",");
 
-		folder = "".equals(folder) ? "*" : folder.replace("\\\\", "\\");
+		if ("".equals(path) || path == null) {
+			alertMessage("알림", "검색할 경로를 입력해주세요.", "(ex : D:\\ 또는  C:\\download)");
+			return;
+		}
+
+		path = "".equals(path) ? "*" : path.replace("\\\\", "\\");
 		fileText = "".equals(fileText) ? "*" : fileText;
-
-	    ObservableList<FileList> fileListArrays = FXCollections.observableArrayList();
-
-		String path = folder;
 		File dirFile = new File(path);
 		ArrayList<File> subFiles= new ArrayList<File>();
-		//File[] fileList = dirFile.listFiles();
-		
+
 		if(!dirFile.exists()) 
 		{ 
-		    System.out.println("디렉토리가 존재하지 않습니다"); 
-		    return; 
+			System.out.println("디렉토리가 존재하지 않습니다");
+			return; 
 		} 
 
+		ObservableList<FileList> fileListArrays = FXCollections.observableArrayList();
+
+		// 파일 패턴에 해당되는 목록을 가져온다.
 		findSubFiles(dirFile, subFiles, fileNamePatterns);
 
+		// 파일 패턴에 해당되는 목록 중 검색어에 해당되는 줄번호, 텍스트를 찾는다.
 		for (File tempFile : subFiles) {
 			if (tempFile.isFile()) {
 				String tempFileName = tempFile.getName();
 				// System.out.println("Path=" + tempFile.getAbsolutePath());
 				// System.out.println("Path=" + tempPath);
 				// System.out.println("FileName=" + tempFileName);
-				// System.out.println("FullFileName=" + tempPath + "\\" + tempFileName);
 
 				// 파일명은 \* 미처리
 				Pattern txtFilePattern = Pattern.compile(TEXT_FILE_FILTER_PATTERN);
@@ -155,7 +158,17 @@ public class RootLayoutController {
 									break;
 								}
 								content = content.trim();
-								content = content.replace("*", ".*");
+								content = content.replace("(", "\\(").replace(")", "\\)").replace("{", "\\{").replace("}", "\\}").replace("+", "\\+").replace("[", "\\[").replace("]", "\\]")
+										  .replace("^", "\\^").replace("&", "\\$").replace("|", "\\|").replace("?", "\\?").replace("*", ".*");
+								content = content.replace("\\.*", "\\*");
+								/**
+								 * 파일 내 검색어 패턴에 대해 두가지가 상충함.
+								 * 1. * 처리. 현재 *를 .*로 치환하여 동작하게 한 상태.
+								 * 2. \* 처리. *를 .*로 치환한 상태로 \.*를 \\*로 치환....?
+								 * 띠용
+								 * 실제 들어온 건에서 \.* 들어올 시 고려 안된 상태.
+								 * 케릭터 배열로 변경하여 읽어 들인 후 새로운 문자열 만드는 방식으로 고려 중.
+								 */
 								String findStr = "(?i).*" + content.trim() + ".*";
 								// System.out.println(findStr);
 								if ("*".equals(content.trim()) || s.matches(findStr)) {
@@ -207,6 +220,18 @@ public class RootLayoutController {
 	}
 
 	/**
+	 * 검색 기능.
+	 * RootLayout.fxml
+	 * 버튼 [검색] ON MOUSE CLICKED => search()
+	 */
+	@FXML
+	private void keyEventHandler(KeyEvent e) {
+		if ("ENTER".equals(e.getCode().toString())) {
+			search();
+		}
+	}
+
+	/**
 	 * 하단 우측 테이블 뷰에서 각 컬럼 선택 시 실행하는 이벤트
 	 */
 	@FXML
@@ -244,7 +269,10 @@ public class RootLayoutController {
 				boolean isFind = false;
 				for (String patternString : fileNamePatterns) {
 					if(!patternString.equals("*")) {
-						Pattern p = Pattern.compile("(?i)" + patternString.replace(".", "\\.").replace("*", ".*") + "$");
+						String compileString = "(?i)" + patternString.replace("(", "\\(").replace(")", "\\)").replace("{", "\\{").replace("}", "\\}")
+														.replace("+", "\\+").replace("[", "\\[").replace("]", "\\]").replace("^", "\\^").replace("&", "\\$")
+														.replace("|", "\\|").replace("?", "\\?").replace(".", "\\.").replace("*", ".*") + "$";
+						Pattern p = Pattern.compile(compileString);
 						Matcher m = p.matcher(parentFile.getName());
 						if(patternString.equals("*") || (!isFind && m.find())) {
 							//System.out.println("FileName : " + parentFile.getName() + ", pattern : (?i)" + patternString.replace(".", "\\.").replace("*", ".*") + "$");
@@ -269,9 +297,10 @@ public class RootLayoutController {
 		} catch (Exception e) {
 			System.out.println("---------- findSubFiles Error --------");
 			System.out.println("Error File : " + parentFile);
+			System.out.println("Error Pattern : " + fileNamePatterns.toString());
 			e.printStackTrace();
 			//System.exit(-1);
-		}
+		} 
 	}
 
 	/**
