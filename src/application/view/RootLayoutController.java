@@ -269,13 +269,13 @@ public class RootLayoutController {
 				boolean isFind = false;
 				for (String patternString : fileNamePatterns) {
 					if(!patternString.equals("*")) {
-						String compileString = "(?i)" + patternString.replace("(", "\\(").replace(")", "\\)").replace("{", "\\{").replace("}", "\\}")
+						String compileString = "(?i)^" + patternString.replace("(", "\\(").replace(")", "\\)").replace("{", "\\{").replace("}", "\\}")
 														.replace("+", "\\+").replace("[", "\\[").replace("]", "\\]").replace("^", "\\^").replace("&", "\\$")
 														.replace("|", "\\|").replace("?", "\\?").replace(".", "\\.").replace("*", ".*") + "$";
 						Pattern p = Pattern.compile(compileString);
 						Matcher m = p.matcher(parentFile.getName());
 						if(patternString.equals("*") || (!isFind && m.find())) {
-							//System.out.println("FileName : " + parentFile.getName() + ", pattern : (?i)" + patternString.replace(".", "\\.").replace("*", ".*") + "$");
+							System.out.println("FileName : " + parentFile.getName() + ", pattern : (?i)" + patternString.replace(".", "\\.").replace("*", ".*") + "$");
 							isFind = true;
 							break;
 						}
