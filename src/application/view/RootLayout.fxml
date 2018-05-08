@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.control.TableColumn?>
@@ -22,6 +23,7 @@
             <Label layoutX="30.0" layoutY="80.0" text="탐색파일" />
             <Label layoutX="30.0" layoutY="130.0" text="검색어" />
             <Button layoutX="651.0" layoutY="126.0" mnemonicParsing="false" onMouseClicked="#initText" text="초기화" />
+            <CheckBox fx:id="caseSensitive" layoutX="641.0" layoutY="30.0" mnemonicParsing="false" text="검색어 대소문자 구분" />
          </children>
       </Pane>
    </top>
