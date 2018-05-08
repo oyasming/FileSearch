@@ -26,11 +26,11 @@
       </Pane>
    </top>
    <center>
-      <SplitPane dividerPositions="0.29797979797979796" BorderPane.alignment="CENTER">
+      <SplitPane dividerPositions="0.3" BorderPane.alignment="CENTER">
         <items>
           <AnchorPane prefHeight="318.0" prefWidth="350.0">
                <children>
-                  <TableView fx:id="listView" minWidth="360.0" onMouseClicked="#setLabels" prefHeight="318.0" prefWidth="350.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                  <TableView fx:id="listView" minWidth="360.0" onKeyPressed="#setLabels" onMouseClicked="#setLabels" prefHeight="318.0" prefWidth="350.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                     <columns>
                       <TableColumn fx:id="fileName" prefWidth="358.0" text="파일명" />
                     </columns>
@@ -41,7 +41,7 @@
                <children>
                   <TableView fx:id="tableView" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                     <columns>
-                      <TableColumn fx:id="findLine" prefWidth="60.0" style="-fx-text-alignment: center;" text="Line" />
+                      <TableColumn fx:id="findLine" prefWidth="60.0" text="Line" />
                         <TableColumn fx:id="findPattern" prefWidth="100.0" text="패턴" />
                       <TableColumn fx:id="findText" prefWidth="270.0" text="텍스트" />
                     </columns>

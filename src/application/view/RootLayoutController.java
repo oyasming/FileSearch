@@ -2,12 +2,15 @@ package application.view;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+
+import org.mozilla.universalchardet.UniversalDetector;
 
 import application.MainApp;
 import application.model.FileInfo;
@@ -54,7 +57,7 @@ public class RootLayoutController {
 	private MainApp mainApp;
 
 	// 파일 중 txt 아닌 파일을 거르기 위한 필터 패턴. (exe, class 등 바이너리 파일을 거르기 위해 사용. WhiteList)
-	private final static String TEXT_FILE_FILTER_PATTERN = "(?i).*\\.(txt|jsp|asp|php|js|html|ini|properties|c|py|scala|java|xml|css)$";
+	private final static String TEXT_FILE_FILTER_PATTERN = "(?i).*\\.(txt|jsp|asp|php|js|html|ini|properties|c|py|scala|java|xml|css|sh|bat|log)$";
 
 	/**
 	 * 생성자. initialize() 메서드 이전에 호출된다.
@@ -132,7 +135,7 @@ public class RootLayoutController {
 		for (File tempFile : subFiles) {
 			if (tempFile.isFile()) {
 				String tempFileName = tempFile.getName();
-				// System.out.println("Path=" + tempFile.getAbsolutePath());
+				 System.out.println("Path=" + tempFile.getAbsolutePath());
 				// System.out.println("Path=" + tempPath);
 				// System.out.println("FileName=" + tempFileName);
 
@@ -148,44 +151,54 @@ public class RootLayoutController {
 					FileList tempFileList = new FileList();
 					ObservableList<FileInfo> list = FXCollections.observableArrayList();
 					if (txtFileFilter.find()) {
-						BufferedReader in = new BufferedReader(new FileReader(tempFile));
-						String s;
+						// 해당 파일의 인코딩 방식을 가져온다.
+						String textFileEncoding = findFileEncoding(tempFile);
+						// 인코딩이 없을 시 다음 파일로 넘어간다.
+						if(textFileEncoding != null) {
 	
-						while ((s = in.readLine()) != null) {
-							for (String content : contents) {
-								if("".equals(content)) {
-									isFind = true;
-									break;
+							BufferedReader in = new BufferedReader(new InputStreamReader(new FileInputStream(tempFile), textFileEncoding.replace("WINDOWS-1252", "MS949")));
+							String s;
+	
+							while ((s = in.readLine()) != null) {
+								for (String content : contents) {
+	
+									//content = new String(content.getBytes("utf-8"), textFileEncoding);
+									content = content.trim();
+	
+									if("".equals(content)) {
+										isFind = true;
+										break;
+									}
+	
+									String matchContent = content.replace("(", "\\(").replace(")", "\\)").replace("{", "\\{").replace("}", "\\}").replace("+", "\\+").replace("[", "\\[").replace("]", "\\]")
+											  .replace("^", "\\^").replace("&", "\\$").replace("|", "\\|").replace("?", "\\?").replace("*", ".*");
+									matchContent = matchContent.replace("\\.*", "\\*");
+									/**
+									 * 파일 내 검색어 패턴에 대해 두가지가 상충함.
+									 * 1. * 처리. 현재 *를 .*로 치환하여 동작하게 한 상태.
+									 * 2. \* 처리. *를 .*로 치환한 상태로 \.*를 \\*로 치환....?
+									 * 띠용
+									 * 실제 들어온 건에서 \.* 들어올 시 고려 안된 상태.
+									 * 케릭터 배열로 변경하여 읽어 들인 후 새로운 문자열 만드는 방식으로 고려 중.
+									 */
+									String findStr = "(?i).*" + matchContent + ".*";
+									System.out.println(findStr + "::" + textFileEncoding.replace("WINDOWS-1252", "MS949"));
+									System.out.println(s);
+									if ("*".equals(content.trim()) || s.matches(findStr)) {
+										// System.out.format("%3d: %s%n", lineNumber, s);
+										isFind = true;
+										list.add(new FileInfo(lineNumber + "", content, s));
+									}
 								}
-								content = content.trim();
-								content = content.replace("(", "\\(").replace(")", "\\)").replace("{", "\\{").replace("}", "\\}").replace("+", "\\+").replace("[", "\\[").replace("]", "\\]")
-										  .replace("^", "\\^").replace("&", "\\$").replace("|", "\\|").replace("?", "\\?").replace("*", ".*");
-								content = content.replace("\\.*", "\\*");
-								/**
-								 * 파일 내 검색어 패턴에 대해 두가지가 상충함.
-								 * 1. * 처리. 현재 *를 .*로 치환하여 동작하게 한 상태.
-								 * 2. \* 처리. *를 .*로 치환한 상태로 \.*를 \\*로 치환....?
-								 * 띠용
-								 * 실제 들어온 건에서 \.* 들어올 시 고려 안된 상태.
-								 * 케릭터 배열로 변경하여 읽어 들인 후 새로운 문자열 만드는 방식으로 고려 중.
-								 */
-								String findStr = "(?i).*" + content.trim() + ".*";
-								// System.out.println(findStr);
-								if ("*".equals(content.trim()) || s.matches(findStr)) {
-									// System.out.format("%3d: %s%n", lineNumber, s);
-									isFind = true;
-									content = content.replace(".*", "*");
-									list.add(new FileInfo(lineNumber + "", content, s));
-								}
+								lineNumber++; // 행 번호 증가
 							}
-							lineNumber++; // 행 번호 증가
+							if (isFind) {
+								tempFileList.setFileName(tempFile.getAbsolutePath());
+								tempFileList.setFileInfoData(list);
+								fileListArrays.add(tempFileList);
+							}
+							in.close();
 						}
-						if (isFind) {
-							tempFileList.setFileName(tempFile.getAbsolutePath());
-							tempFileList.setFileInfoData(list);
-							fileListArrays.add(tempFileList);
-						}
-						in.close();
 					} else {
 						tempFileList.setFileName(tempFile.getAbsolutePath());
 						tempFileList.setFileInfoData(list);
@@ -196,14 +209,14 @@ public class RootLayoutController {
 					System.out.println("Error File : " + tempFile.getAbsolutePath());
 					e.printStackTrace();
 					alertMessage("알림", "파일 입출력 중 에러가 발생하였습니다.", "");
-					break;
+					return;
 					//System.exit(1);
 				} catch (PatternSyntaxException e) { // 정규식에 에러가 있다면
 					System.out.println("Error File : " + tempFile.getAbsolutePath());
 					System.out.println("Error contents : " + contents.toString());
 					e.printStackTrace();
 					alertMessage("알림", "정규식 비교 중 에러가 발생하였습니다.", "");
-					break;
+					return;
 					//System.exit(1);
 				}
 			}
@@ -275,7 +288,7 @@ public class RootLayoutController {
 						Pattern p = Pattern.compile(compileString);
 						Matcher m = p.matcher(parentFile.getName());
 						if(patternString.equals("*") || (!isFind && m.find())) {
-							System.out.println("FileName : " + parentFile.getName() + ", pattern : (?i)" + patternString.replace(".", "\\.").replace("*", ".*") + "$");
+							//System.out.println("FileName : " + parentFile.getName() + ", pattern : (?i)" + patternString.replace(".", "\\.").replace("*", ".*") + "$");
 							isFind = true;
 							break;
 						}
@@ -303,6 +316,44 @@ public class RootLayoutController {
 		} 
 	}
 
+	public static String findFileEncoding(File file) {
+		String encoding = null;
+		try {
+			byte[] buf = new byte[4096];
+			java.io.FileInputStream fis = new java.io.FileInputStream(file);
+	
+			// (1)
+			UniversalDetector detector = new UniversalDetector(null);
+	
+			// (2)
+			int nread;
+			while ((nread = fis.read(buf)) > 0 && !detector.isDone()) {
+				detector.handleData(buf, 0, nread);
+			}
+			// (3)
+			detector.dataEnd();
+	
+			// (4)
+			encoding = detector.getDetectedCharset();
+			/*
+			if (encoding != null) {
+				System.out.println("Detected encoding = " + encoding);
+			} else {
+				System.out.println("No encoding detected.");
+			}*/
+	
+			// (5)
+			detector.reset();
+			
+			fis.close();
+		
+		} catch(IOException e) {
+			e.printStackTrace();
+		}
+
+		return encoding;
+	}
+	
 	/**
 	 * 참조를 다시 유지하기 위해 메인 애플리케이션이 호출한다.
 	 *
